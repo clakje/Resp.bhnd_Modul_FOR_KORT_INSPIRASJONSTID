@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Scenario-spiller for respirator-simulering — kursdeltakerversjon.">
+    <title>Respirator Scenario-spiller</title>
+
+    <!--
+        Frittstående mappe: stilark og motorer (style.css, simulator.js,
+        renderer.js) ligger her sammen med spilleren, uforandret fra
+        generatoren. Ingenting utenfor mappen trengs.
+    -->
+    <link rel="stylesheet" href="./style.css?v=3.0">
+    <link rel="stylesheet" href="player.css?v=1.0">
+</head>
+<body>
+
+    <!-- Topp-header og statuslinje -->
+    <header class="app-header">
+        <div class="brand-section">
+            <span class="logo-badge">NIV</span>
+            <div>
+                <h1 class="brand-title" id="headerTitle">Respirator Scenario-spiller</h1>
+                <div class="brand-subtitle" id="headerSubtitle">Laster scenario …</div>
+            </div>
+        </div>
+
+        <div class="status-badge-container">
+            <div class="mode-badge" id="modeBadge">
+                <span>Modus: BPAP</span>
+            </div>
+        </div>
+
+        <div class="header-controls">
+            <button id="btnShowFasit" class="btn-header" title="Vis fasit: optimale innstillinger og forventet respons">
+                <span>🔑</span> <span>Vis Fasit</span>
+            </button>
+            <button id="btnPause" class="btn-header" title="Pause eller frys simuleringen">
+                <span id="pauseIcon">⏸</span> <span id="pauseText">Pause / Frys</span>
+            </button>
+            <button id="btnReset" class="btn-header" title="Sett scenariet tilbake til starttilstanden">
+                <span>↺</span> <span>Nullstill</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Toast-varsel -->
+    <div id="toastNotification" class="toast-notification hidden" role="status"></div>
+
+    <!-- Hovedinnhold -->
+    <main class="main-content">
+
+        <!-- Seksjon 1: Monitoren (Canvas kurver + Måleverdier) -->
+        <section class="monitor-row" aria-label="Ventilatormonitor">
+
+            <div class="monitor-left-col">
+                <!-- Medisinsk Alarm-banner -->
+                <div id="alarmBanner" class="alarm-banner hidden" role="alert">
+                    <div id="alarmList" class="alarm-list"></div>
+                </div>
+
+                <!-- Monitor-verktøylinje (kun visningsvalg, ingen respiratorinnstillinger) -->
+                <div class="monitor-toolbar">
+                    <div class="toolbar-group">
+                        <span class="toolbar-label">Sveipetid:</span>
+                        <div class="btn-group-pill">
+                            <span class="btn-pill active" title="Sveipetid er låst til 15 sekunder" style="cursor: default;">🔒 15 s</span>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <span class="toolbar-label">Y-skala:</span>
+                        <div class="btn-group-pill">
+                            <span class="btn-pill active" title="Automatisk skalering med faste minimumsgrenser" style="cursor: default;">🔄 Auto</span>
+                        </div>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <span class="toolbar-label">Kurver:</span>
+                        <label class="toolbar-checkbox-label" title="Vis pasientens sanne lungeflow og lungevolum som stiplede referansekurver">
+                            <input type="checkbox" id="checkShowTrueCurves">
+                            <span>Sanne kurver</span>
+                        </label>
+                        <label class="toolbar-checkbox-label" title="Vis 4. spor med pasientens muskelinnsats / øsofagustrykk (P_es)">
+                            <input type="checkbox" id="checkShowPes">
+                            <span>Vis P<sub>es</sub> / muskelinnsats</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Canvas med kurvene (Paw, Flow, Volum, ev. Pes) -->
+                <div class="canvas-container">
+                    <canvas id="waveformCanvas"></canvas>
+                </div>
+
+                <!-- Holdmanøvrer (gir Pplat og PEEPtotal i måleverdi-panelet) -->
+                <div class="hold-controls-bar">
+                    <button type="button" class="hold-btn" id="btnInspHold" title="Hold inne for inspiratorisk holdmanøver (platåtrykk)">
+                        <span>⏸️</span> Insp. hold
+                    </button>
+                    <button type="button" class="hold-btn" id="btnExpHold" title="Hold inne for ekspiratorisk holdmanøver (PEEPtotal / auto-PEEP)">
+                        <span>⏸️</span> Eksp. hold
+                    </button>
+                    <span id="holdStatusIndicator">Hold nede knappen for å låse luftveien (maks 5 s)</span>
+                </div>
+            </div>
+
+            <!-- Sidestilt måleverdi-display -->
+            <aside class="readout-panel">
+                <div class="readout-section-header">
+                    <span class="readout-group-title">Målte pasientverdier</span>
+                    <span class="readout-type-badge badge-measured">MÅLT</span>
+                </div>
+
+                <!-- Primære målekort -->
+                <div class="primary-metrics-grid">
+                    <div class="metric-card pressure-card" id="cardMetricPpeak">
+                        <div class="metric-label">
+                            <span>P<sub>peak</sub> (PIP)</span>
+                            <span class="metric-unit">cmH₂O</span>
+                        </div>
+                        <div class="metric-value" id="valPpeak">--</div>
+                    </div>
+
+                    <div class="metric-card volume-card" id="cardMetricVt">
+                        <div class="metric-label">
+                            <span>V<sub>t</sub> (V<sub>TE</sub>)</span>
+                            <span class="metric-unit">ml</span>
+                        </div>
+                        <div class="metric-value" id="valVt">--</div>
+                    </div>
+
+                    <div class="metric-card mv-card" id="cardMetricMv">
+                        <div class="metric-label">
+                            <span>MV</span>
+                            <span class="metric-unit">L/min</span>
+                        </div>
+                        <div class="metric-value" id="valMv">--</div>
+                    </div>
+
+                    <div class="metric-card rr-card" id="cardMetricRR">
+                        <div class="metric-label">
+                            <span>RR<sub>tot</sub></span>
+                            <span class="metric-unit">/min</span>
+                        </div>
+                        <div class="metric-value" id="valRR">--</div>
+                    </div>
+                </div>
+
+                <!-- Sekundære utvidede målinger -->
+                <div class="secondary-metrics-panel">
+                    <div class="secondary-panel-header">
+                        <span>Utvidede målinger</span>
+                    </div>
+                    <div class="secondary-grid">
+                        <div class="sub-metric-card" id="cardSecPeep">
+                            <div class="sub-metric-header">
+                                <span class="sub-metric-title" id="titleSecPeep">PEEP / PEEP<sub>i</sub></span>
+                                <span class="sub-metric-unit">cmH₂O</span>
+                            </div>
+                            <div class="sub-metric-val" id="dispPeepPeepi">--</div>
+                            <div class="sub-metric-foot" id="dispPeepTot">PEEP<sub>tot</sub>: --</div>
+                        </div>
+
+                        <div class="sub-metric-card" id="cardSecPplat">
+                            <div class="sub-metric-header">
+                                <span class="sub-metric-title" id="titleSecPplat">P<sub>plat</sub> (Platå)</span>
+                                <span class="sub-metric-unit">cmH₂O</span>
+                            </div>
+                            <div class="sub-metric-val" id="dispPplatSec">--</div>
+                            <div class="sub-metric-foot" id="dispPplatFoot">End-insp. platå</div>
+                        </div>
+
+                        <div class="sub-metric-card" id="cardSecP01">
+                            <div class="sub-metric-header">
+                                <span class="sub-metric-title" id="titleSecP01">P<sub>0.1</sub> (Drive)</span>
+                                <span class="sub-metric-unit">cmH₂O</span>
+                            </div>
+                            <div class="sub-metric-val" id="dispP01Sec">--</div>
+                            <div class="sub-metric-foot" id="dispP01Foot">Respiratorisk drive</div>
+                        </div>
+
+                        <div class="sub-metric-card" id="cardSecLeak">
+                            <div class="sub-metric-header">
+                                <span class="sub-metric-title">Lekkasje</span>
+                                <span class="sub-metric-unit">L/min</span>
+                            </div>
+                            <div class="sub-metric-val" id="dispLeakSec">--</div>
+                            <div class="sub-metric-foot" id="dispLeakStatus">Tett krets</div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <!-- Seksjon 2: Scenariet — fylles av app.js fra scenario.json -->
+        <section class="player-row">
+
+            <!-- Tittel, beskrivelse og læringsmål -->
+            <div id="scenario-metadata"></div>
+
+            <!-- Autogenererte kontroller for parameterne forfatteren gjorde justerbare -->
+            <div id="dynamic-controls"></div>
+
+        </section>
+
+        <!-- Reservevei: brukes bare hvis scenariofilen ikke kunne lastes automatisk -->
+        <section id="scenarioLoader" class="scenario-loader hidden">
+            <div class="control-card">
+                <div class="control-header">
+                    <div>
+                        <div class="control-label">📂 Åpne scenariofil</div>
+                        <div class="control-sublabel" id="loaderHint">Velg den eksporterte <code>.json</code>-filen for dette scenariet.</div>
+                    </div>
+                </div>
+                <input type="file" id="scenarioFileInput" accept="application/json,.json">
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Fasit-dialog -->
+    <div id="fasitOverlay" class="fasit-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="fasitHeading">
+        <div class="fasit-modal">
+            <div class="fasit-header">
+                <h2 id="fasitHeading">🔑 Fasit</h2>
+                <button type="button" id="btnCloseFasit" class="fasit-close" aria-label="Lukk fasit">✕</button>
+            </div>
+            <div class="fasit-body" id="fasitBody"></div>
+        </div>
+    </div>
+
+    <!-- Motorene: uforandret fysikk og tegning -->
+    <script src="./simulator.js"></script>
+    <script src="./renderer.js"></script>
+
+    <!--
+        Valgfritt: legg scenariet inline slik at spilleren virker med file://-protokollen.
+        Filen skal inneholde én linje:  window.SCENARIO_DATA = { ... };
+    -->
+    <script src="scenario-data.js" onerror="void 0"></script>
+
+    <script src="app.js?v=1.0"></script>
+</body>
+</html>
