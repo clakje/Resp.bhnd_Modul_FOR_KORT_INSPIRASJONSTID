@@ -7,23 +7,23 @@
     <title>Respirator Scenario-spiller</title>
 
     <!--
-        Frittstående mappe: stilark og motorer (style.css, simulator.js,
-        renderer.js) ligger her sammen med spilleren, uforandret fra
-        generatoren. Ingenting utenfor mappen trengs.
+        Frittstående mappe: style.css, simulator.js og renderer.js er kopiert
+        inn her fra generator-prosjektet, og lenkene under peker lokalt («./»).
     -->
-    <link rel="stylesheet" href="./style.css?v=3.0">
-    <link rel="stylesheet" href="player.css?v=1.0">
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="player.css">
 </head>
 <body>
 
     <!-- Topp-header og statuslinje -->
     <header class="app-header">
         <div class="brand-section">
+            <!-- Dummy: kobles til hovedmenyen når scenariene bygges inn i hovedprogrammet (se goToMainMenu i app.js) -->
+            <button type="button" id="btnMainMenu" class="btn-header btn-main-menu" title="Gå tilbake til hovedmenyen">
+                <span aria-hidden="true">←</span> <span>Hovedmeny</span>
+            </button>
             <span class="logo-badge">NIV</span>
-            <div>
-                <h1 class="brand-title" id="headerTitle">Respirator Scenario-spiller</h1>
-                <div class="brand-subtitle" id="headerSubtitle">Laster scenario …</div>
-            </div>
+            <h1 class="brand-title" id="headerTitle">Respirator Scenario-spiller</h1>
         </div>
 
         <div class="status-badge-container">
@@ -33,9 +33,6 @@
         </div>
 
         <div class="header-controls">
-            <button id="btnShowFasit" class="btn-header" title="Vis fasit: optimale innstillinger og forventet respons">
-                <span>🔑</span> <span>Vis Fasit</span>
-            </button>
             <button id="btnPause" class="btn-header" title="Pause eller frys simuleringen">
                 <span id="pauseIcon">⏸</span> <span id="pauseText">Pause / Frys</span>
             </button>
@@ -51,7 +48,7 @@
     <!-- Hovedinnhold -->
     <main class="main-content">
 
-        <!-- Seksjon 1: Monitoren (Canvas kurver + Måleverdier) -->
+        <!-- Monitoren: kurver til venstre, sidepanel (måleverdier + innstillinger) til høyre -->
         <section class="monitor-row" aria-label="Ventilatormonitor">
 
             <div class="monitor-left-col">
@@ -62,62 +59,32 @@
 
                 <!-- Monitor-verktøylinje (kun visningsvalg, ingen respiratorinnstillinger) -->
                 <div class="monitor-toolbar">
-                    <div class="toolbar-group">
-                        <span class="toolbar-label">Sveipetid:</span>
-                        <div class="btn-group-pill">
-                            <span class="btn-pill active" title="Sveipetid er låst til 15 sekunder" style="cursor: default;">🔒 15 s</span>
-                        </div>
-                    </div>
+                    <button type="button" id="btnShowInfo" class="btn-info" title="Vis informasjon om scenariet" aria-haspopup="dialog" aria-controls="infoOverlay">
+                        <span aria-hidden="true">ℹ</span> <span>Info</span>
+                    </button>
 
-                    <div class="toolbar-group">
-                        <span class="toolbar-label">Y-skala:</span>
-                        <div class="btn-group-pill">
-                            <span class="btn-pill active" title="Automatisk skalering med faste minimumsgrenser" style="cursor: default;">🔄 Auto</span>
-                        </div>
-                    </div>
-
-                    <div class="toolbar-group">
-                        <span class="toolbar-label">Kurver:</span>
-                        <label class="toolbar-checkbox-label" title="Vis pasientens sanne lungeflow og lungevolum som stiplede referansekurver">
-                            <input type="checkbox" id="checkShowTrueCurves">
-                            <span>Sanne kurver</span>
-                        </label>
-                        <label class="toolbar-checkbox-label" title="Vis 4. spor med pasientens muskelinnsats / øsofagustrykk (P_es)">
-                            <input type="checkbox" id="checkShowPes">
-                            <span>Vis P<sub>es</sub> / muskelinnsats</span>
-                        </label>
-                    </div>
+                    <button type="button" id="btnShowPes" class="btn-pes" aria-pressed="false" title="Vis eller skjul 4. spor med øsofagustrykk (P_es), et mål på pasientens muskelinnsats">
+                        <span class="btn-pes-dot" aria-hidden="true"></span>
+                        <span id="btnShowPesText">Vis muskelinnsats (P<sub>es</sub>)</span>
+                    </button>
                 </div>
 
-                <!-- Canvas med kurvene (Paw, Flow, Volum, ev. Pes) -->
+                <!-- Canvas med kurvene (Paw, Flow, Volum, Pes) -->
                 <div class="canvas-container">
-                    <canvas id="waveformCanvas"></canvas>
-                </div>
-
-                <!-- Holdmanøvrer (gir Pplat og PEEPtotal i måleverdi-panelet) -->
-                <div class="hold-controls-bar">
-                    <button type="button" class="hold-btn" id="btnInspHold" title="Hold inne for inspiratorisk holdmanøver (platåtrykk)">
-                        <span>⏸️</span> Insp. hold
-                    </button>
-                    <button type="button" class="hold-btn" id="btnExpHold" title="Hold inne for ekspiratorisk holdmanøver (PEEPtotal / auto-PEEP)">
-                        <span>⏸️</span> Eksp. hold
-                    </button>
-                    <span id="holdStatusIndicator">Hold nede knappen for å låse luftveien (maks 5 s)</span>
+                    <canvas id="waveformCanvas" role="img" aria-label="Kurver for luftveistrykk, flow, volum og øsofagustrykk"></canvas>
                 </div>
             </div>
 
-            <!-- Sidestilt måleverdi-display -->
-            <aside class="readout-panel">
+            <aside class="side-panel">
+                <!-- Måleverdier -->
                 <div class="readout-section-header">
-                    <span class="readout-group-title">Målte pasientverdier</span>
-                    <span class="readout-type-badge badge-measured">MÅLT</span>
+                    <span class="readout-group-title">Måleverdier</span>
                 </div>
 
-                <!-- Primære målekort -->
                 <div class="primary-metrics-grid">
                     <div class="metric-card pressure-card" id="cardMetricPpeak">
                         <div class="metric-label">
-                            <span>P<sub>peak</sub> (PIP)</span>
+                            <span>Topptrykk (P<sub>peak</sub>)</span>
                             <span class="metric-unit">cmH₂O</span>
                         </div>
                         <div class="metric-value" id="valPpeak">--</div>
@@ -125,7 +92,7 @@
 
                     <div class="metric-card volume-card" id="cardMetricVt">
                         <div class="metric-label">
-                            <span>V<sub>t</sub> (V<sub>TE</sub>)</span>
+                            <span>Tidalvolum (V<sub>TE</sub>)</span>
                             <span class="metric-unit">ml</span>
                         </div>
                         <div class="metric-value" id="valVt">--</div>
@@ -133,7 +100,7 @@
 
                     <div class="metric-card mv-card" id="cardMetricMv">
                         <div class="metric-label">
-                            <span>MV</span>
+                            <span>Minuttvolum (MV)</span>
                             <span class="metric-unit">L/min</span>
                         </div>
                         <div class="metric-value" id="valMv">--</div>
@@ -141,68 +108,43 @@
 
                     <div class="metric-card rr-card" id="cardMetricRR">
                         <div class="metric-label">
-                            <span>RR<sub>tot</sub></span>
+                            <span>Frekvens (RR)</span>
                             <span class="metric-unit">/min</span>
                         </div>
                         <div class="metric-value" id="valRR">--</div>
                     </div>
                 </div>
 
-                <!-- Sekundære utvidede målinger -->
-                <div class="secondary-metrics-panel">
-                    <div class="secondary-panel-header">
-                        <span>Utvidede målinger</span>
+                <!-- Samspill pasient–respirator: pasientens innsatser mot pust respiratoren utløste -->
+                <div class="sync-card" id="syncCard">
+                    <div class="sync-header">
+                        <span class="sync-title">Samspill pasient–respirator</span>
+                        <span class="sync-window">siste 60 s</span>
                     </div>
-                    <div class="secondary-grid">
-                        <div class="sub-metric-card" id="cardSecPeep">
-                            <div class="sub-metric-header">
-                                <span class="sub-metric-title" id="titleSecPeep">PEEP / PEEP<sub>i</sub></span>
-                                <span class="sub-metric-unit">cmH₂O</span>
-                            </div>
-                            <div class="sub-metric-val" id="dispPeepPeepi">--</div>
-                            <div class="sub-metric-foot" id="dispPeepTot">PEEP<sub>tot</sub>: --</div>
+                    <dl class="sync-rows">
+                        <div class="sync-row">
+                            <dt>Pasientens pustforsøk</dt>
+                            <dd><span id="valEfforts">--</span> <span class="sync-unit">/min</span></dd>
                         </div>
-
-                        <div class="sub-metric-card" id="cardSecPplat">
-                            <div class="sub-metric-header">
-                                <span class="sub-metric-title" id="titleSecPplat">P<sub>plat</sub> (Platå)</span>
-                                <span class="sub-metric-unit">cmH₂O</span>
-                            </div>
-                            <div class="sub-metric-val" id="dispPplatSec">--</div>
-                            <div class="sub-metric-foot" id="dispPplatFoot">End-insp. platå</div>
+                        <div class="sync-row">
+                            <dt>Utløste pust</dt>
+                            <dd><span id="valTriggered">--</span> <span class="sync-unit">/min</span></dd>
                         </div>
-
-                        <div class="sub-metric-card" id="cardSecP01">
-                            <div class="sub-metric-header">
-                                <span class="sub-metric-title" id="titleSecP01">P<sub>0.1</sub> (Drive)</span>
-                                <span class="sub-metric-unit">cmH₂O</span>
-                            </div>
-                            <div class="sub-metric-val" id="dispP01Sec">--</div>
-                            <div class="sub-metric-foot" id="dispP01Foot">Respiratorisk drive</div>
+                        <div class="sync-row">
+                            <dt>Mislykkede pustforsøk</dt>
+                            <dd><span id="valMissed">--</span> <span class="sync-unit">/min</span></dd>
                         </div>
-
-                        <div class="sub-metric-card" id="cardSecLeak">
-                            <div class="sub-metric-header">
-                                <span class="sub-metric-title">Lekkasje</span>
-                                <span class="sub-metric-unit">L/min</span>
-                            </div>
-                            <div class="sub-metric-val" id="dispLeakSec">--</div>
-                            <div class="sub-metric-foot" id="dispLeakStatus">Tett krets</div>
-                        </div>
+                    </dl>
+                    <div class="sync-index">
+                        <span class="sync-index-label">Asynkroniindeks</span>
+                        <span class="sync-index-value"><span id="valAsyncIndex">--</span> %</span>
                     </div>
+                    <div class="sync-status" id="syncStatus">Venter på målinger …</div>
                 </div>
+
+                <!-- Autogenererte kontroller for parameterne forfatteren gjorde justerbare -->
+                <div id="dynamic-controls"></div>
             </aside>
-        </section>
-
-        <!-- Seksjon 2: Scenariet — fylles av app.js fra scenario.json -->
-        <section class="player-row">
-
-            <!-- Tittel, beskrivelse og læringsmål -->
-            <div id="scenario-metadata"></div>
-
-            <!-- Autogenererte kontroller for parameterne forfatteren gjorde justerbare -->
-            <div id="dynamic-controls"></div>
-
         </section>
 
         <!-- Reservevei: brukes bare hvis scenariofilen ikke kunne lastes automatisk -->
@@ -220,6 +162,135 @@
 
     </main>
 
+    <!--
+        Info-dialog: vises når siden åpnes, og igjen via Info-knappen over kurvene.
+        REDIGER INNHOLDET HER. Teksten er plassholder.
+        Bildet legges i mappen «bilder» med navnet under (eller endre src).
+    -->
+    <div id="infoOverlay" class="info-overlay" role="dialog" aria-modal="true" aria-labelledby="infoHeading">
+        <div class="info-modal" id="infoModal">
+            <div class="info-header">
+                <h2 id="infoHeading">For kort inspirasjonstid</h2>
+                <button type="button" id="btnCloseInfoX" class="info-close-x" aria-label="Lukk informasjon">✕</button>
+            </div>
+
+            <!-- Visning 1: tekst -->
+            <div class="info-body" id="infoTextView">
+                <section class="info-section">
+                    <h3>Om scenariet</h3>
+                    <p>[Plassholder] Beskrivelse av pasienten og situasjonen deltakeren møter.</p>
+                </section>
+
+                <section class="info-section">
+                    <h3>Dette kan du prøve</h3>
+                    <ul>
+                        <li>[Plassholder] Første forslag til hva deltakeren kan justere.</li>
+                        <li>[Plassholder] Andre forslag.</li>
+                        <li>[Plassholder] Hva deltakeren bør se etter i kurvene.</li>
+                    </ul>
+                </section>
+
+                <button type="button" id="btnShowInfoLegend" class="info-legend-btn">Forklaring av kurver og symboler</button>
+                <button type="button" id="btnShowInfoImage" class="info-image-btn">Forslag til løsning</button>
+            </div>
+
+            <!-- Visning 2: bilde -->
+            <div class="info-body info-image-view hidden" id="infoImageView">
+                <button type="button" id="btnInfoBack" class="info-back-btn">← Tilbake til info</button>
+                <figure class="info-figure">
+                    <img id="infoImage" src="bilder/scenario-oversikt.png" alt="Kurver, parametre og innstillinger i scenariet">
+                    <p class="info-image-missing hidden" id="infoImageMissing">
+                        Bildet er ikke lagt inn ennå.<br>Legg det i <code>bilder/scenario-oversikt.png</code>.
+                    </p>
+                </figure>
+            </div>
+
+            <!-- Visning 3: forklaring av kurver, markører og måleverdier -->
+            <div class="info-body info-legend-view hidden" id="infoLegendView">
+                <button type="button" id="btnLegendBack" class="info-back-btn">← Tilbake til info</button>
+
+                <section class="info-section">
+                    <h3>Kurvene</h3>
+                    <dl class="legend-list">
+                        <div class="legend-item">
+                            <dt><span class="legend-swatch" style="background: var(--color-pressure);"></span><span>Paw</span></dt>
+                            <dd>Luftveistrykket målt av respiratoren (cmH₂O). Stiger mot IPAP i inspirasjonen og faller tilbake til EPAP i ekspirasjonen.</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt><span class="legend-swatch" style="background: var(--color-flow);"></span><span>Flow</span></dt>
+                            <dd>Gasstrømmen inn og ut av pasienten (L/min). Over nullinjen er inspirasjon, under nullinjen er ekspirasjon.</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt><span class="legend-swatch" style="background: var(--color-volume);"></span><span>Volum</span></dt>
+                            <dd>Volumet som leveres i hvert pust (ml).</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt><span class="legend-swatch" style="background: #d946ef;"></span><span>P<sub>es</sub></span></dt>
+                            <dd>Øsofagustrykket, et mål på pasientens egen muskelinnsats (cmH₂O). Et utslag nedover betyr at pasienten prøver å puste inn. Vises og skjules med knappen «muskelinnsats» over kurvene.</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="info-section">
+                    <h3>Markørene nederst i trykkurven</h3>
+                    <dl class="legend-list">
+                        <div class="legend-item">
+                            <dt>
+                                <svg class="legend-marker" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 L14 13 L2 13 Z" fill="#d946ef"/></svg>
+                                <span>Utløst pust</span>
+                            </dt>
+                            <dd>Pasienten pustet inn, og respiratoren registrerte forsøket og ga et pust.</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt>
+                                <svg class="legend-marker" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 L14 13 L2 13 Z" fill="none" stroke="#d946ef" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                <span>Mislykket pustforsøk</span>
+                            </dt>
+                            <dd>Pasienten prøvde å puste inn, men nådde ikke triggerterskelen. Respiratoren ga ikke noe pust.</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt>
+                                <svg class="legend-marker" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2 L14 13 L2 13 Z" fill="none" stroke="#d946ef" stroke-width="1.6" stroke-linejoin="round"/><path d="M5.5 6.5 L10.5 11.5 M10.5 6.5 L5.5 11.5" stroke="#d946ef" stroke-width="1.6"/></svg>
+                                <span>Autotrigging</span>
+                            </dt>
+                            <dd>Respiratoren ga et pust uten at pasienten prøvde å puste, for eksempel på grunn av lekkasje eller kardiale oscillasjoner.</dd>
+                        </div>
+                        <div class="legend-item">
+                            <dt>
+                                <svg class="legend-marker" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" fill="#d946ef"/></svg>
+                                <span>Maskinutløst pust</span>
+                            </dt>
+                            <dd>Backup-pust som respiratoren ga fordi pasienten ikke pustet selv innen tiden.</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section class="info-section">
+                    <h3>Samspill pasient–respirator</h3>
+                    <ul>
+                        <li><strong>Pasientens pustforsøk</strong> er alle forsøk pasienten gjorde på å puste inn det siste minuttet.</li>
+                        <li><strong>Utløste pust</strong> er forsøkene respiratoren registrerte og svarte på.</li>
+                        <li><strong>Mislykkede pustforsøk</strong> er forsøkene respiratoren ikke registrerte.</li>
+                        <li><strong>Asynkroniindeksen</strong> er andelen pust og pustforsøk som ikke var i takt med respiratoren. Over 10 % regnes som betydelig asynkroni.</li>
+                    </ul>
+                </section>
+
+                <section class="info-section">
+                    <h3>Knappene</h3>
+                    <ul>
+                        <li><strong>Pause / Frys</strong> stopper kurvene, så du kan studere dem i ro.</li>
+                        <li><strong>Nullstill</strong> setter alle innstillinger tilbake til start.</li>
+                        <li><strong>− / +</strong> ved hver innstilling endrer verdien ett steg om gangen.</li>
+                    </ul>
+                </section>
+            </div>
+
+            <div class="info-footer">
+                <button type="button" id="btnCloseInfo" class="info-close-btn">Lukk og se scenariet</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Fasit-dialog -->
     <div id="fasitOverlay" class="fasit-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="fasitHeading">
         <div class="fasit-modal">
@@ -228,6 +299,16 @@
                 <button type="button" id="btnCloseFasit" class="fasit-close" aria-label="Lukk fasit">✕</button>
             </div>
             <div class="fasit-body" id="fasitBody"></div>
+        </div>
+    </div>
+
+    <!-- Varsel: denne delen av kurset må tas på PC (vises på smale skjermer og berøringsenheter) -->
+    <div id="pcNotice" class="pc-notice hidden" role="alertdialog" aria-modal="true" aria-labelledby="pcNoticeHeading" aria-describedby="pcNoticeText">
+        <div class="pc-notice-box">
+            <div class="pc-notice-icon" aria-hidden="true">🖥</div>
+            <h2 id="pcNoticeHeading">Denne delen av kurset må tas på PC</h2>
+            <p id="pcNoticeText">Simuleringen trenger stor skjerm og mus. Åpne kurset på en PC for å gjennomføre scenariet.</p>
+            <button type="button" id="btnPcNoticeDismiss" class="pc-notice-btn">Vis likevel</button>
         </div>
     </div>
 
@@ -241,6 +322,6 @@
     -->
     <script src="scenario-data.js" onerror="void 0"></script>
 
-    <script src="app.js?v=1.0"></script>
+    <script src="app.js"></script>
 </body>
 </html>

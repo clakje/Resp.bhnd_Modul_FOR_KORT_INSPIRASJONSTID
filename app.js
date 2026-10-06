@@ -218,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const scenarioFileInput = document.getElementById('scenarioFileInput');
 
     const headerTitle = document.getElementById('headerTitle');
-    const headerSubtitle = document.getElementById('headerSubtitle');
     const modeBadge = document.getElementById('modeBadge');
     const toast = document.getElementById('toastNotification');
 
@@ -235,10 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const alarmBanner = document.getElementById('alarmBanner');
     const alarmList = document.getElementById('alarmList');
     const checkShowTrueCurves = document.getElementById('checkShowTrueCurves');
-    const checkShowPes = document.getElementById('checkShowPes');
-    const btnInspHold = document.getElementById('btnInspHold');
-    const btnExpHold = document.getElementById('btnExpHold');
-    const holdStatusIndicator = document.getElementById('holdStatusIndicator');
+    const btnShowPes = document.getElementById('btnShowPes');
+    const btnShowPesText = document.getElementById('btnShowPesText');
 
     const valPpeak = document.getElementById('valPpeak');
     const valVt = document.getElementById('valVt');
@@ -248,16 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardMetricVt = document.getElementById('cardMetricVt');
     const cardMetricMv = document.getElementById('cardMetricMv');
     const cardMetricRR = document.getElementById('cardMetricRR');
-    const titleSecPeep = document.getElementById('titleSecPeep');
-    const dispPeepPeepi = document.getElementById('dispPeepPeepi');
-    const dispPeepTot = document.getElementById('dispPeepTot');
-    const titleSecPplat = document.getElementById('titleSecPplat');
-    const dispPplatSec = document.getElementById('dispPplatSec');
-    const dispPplatFoot = document.getElementById('dispPplatFoot');
-    const dispP01Sec = document.getElementById('dispP01Sec');
-    const dispP01Foot = document.getElementById('dispP01Foot');
-    const dispLeakSec = document.getElementById('dispLeakSec');
-    const dispLeakStatus = document.getElementById('dispLeakStatus');
+
+    const syncCard = document.getElementById('syncCard');
+    const syncStatus = document.getElementById('syncStatus');
+    const valEfforts = document.getElementById('valEfforts');
+    const valTriggered = document.getElementById('valTriggered');
+    const valMissed = document.getElementById('valMissed');
+    const valAsyncIndex = document.getElementById('valAsyncIndex');
 
     const MODE_LABELS = { PS: 'BPAP', PC: 'PC', VC: 'VC' };
 
@@ -322,6 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ---- 4c. Dynamisk grensesnitt -----------------------------------------
         renderControls(uiConfig);
+        fitCanvasToPanel();
 
         // ---- 4d. Start simuleringen på nytt med den nye tilstanden -------------
         simulator.reset();
@@ -338,7 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
             : [];
 
         if (headerTitle) headerTitle.textContent = title;
-        if (headerSubtitle) headerSubtitle.textContent = meta.author ? `Scenario av ${meta.author}` : 'Respirator scenario-simulering';
         document.title = title + ' — Respirator Scenario-spiller';
 
         const parts = [];
@@ -362,7 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         parts.push('</div>');
 
-        metaContainer.innerHTML = parts.join('\n');
+        if (metaContainer) metaContainer.innerHTML = parts.join('\n');
     }
 
     // =========================================================================
@@ -401,8 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const header = document.createElement('div');
         header.className = 'readout-section-header controls-heading';
-        header.innerHTML = '<span class="readout-group-title">Justerbare parametere</span>'
-            + '<span class="readout-type-badge badge-set">INNSTILT</span>';
+        header.innerHTML = '<span class="readout-group-title">Innstillinger du kan endre</span>';
         controlsContainer.appendChild(header);
 
         let total = 0;
@@ -487,10 +480,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const wrapper = document.createElement('div');
             wrapper.className = 'slider-wrapper';
 
+            const name = def.label || key;
+
             const minus = document.createElement('button');
             minus.type = 'button';
             minus.className = 'step-btn';
-            minus.textContent = '-';
+            minus.textContent = '−';
+            minus.setAttribute('aria-label', `Senk ${name}`);
 
             const input = document.createElement('input');
             input.type = 'range';
@@ -498,11 +494,13 @@ document.addEventListener('DOMContentLoaded', () => {
             input.max = String(max);
             input.step = String(step);
             input.value = String(clamp(toNumber(paramState[key], def.default), min, max));
+            input.setAttribute('aria-label', name);
 
             const plus = document.createElement('button');
             plus.type = 'button';
             plus.className = 'step-btn';
             plus.textContent = '+';
+            plus.setAttribute('aria-label', `Øk ${name}`);
 
             wrapper.appendChild(minus);
             wrapper.appendChild(input);
@@ -514,7 +512,11 @@ document.addEventListener('DOMContentLoaded', () => {
             limits.innerHTML = `<span>${min}${escapeHtml(unit)}</span><span>${max}${escapeHtml(unit)}</span>`;
             card.appendChild(limits);
 
-            setPill = () => { pill.textContent = Number(input.value).toFixed(decimals) + unit; };
+            setPill = () => {
+                const text = Number(input.value).toFixed(decimals) + unit;
+                pill.textContent = text;
+                input.setAttribute('aria-valuetext', text);   // skjermleser leser verdien med enhet
+            };
 
             const apply = () => {
                 paramState[key] = parseFloat(input.value);
@@ -540,6 +542,9 @@ document.addEventListener('DOMContentLoaded', () => {
             card.__setValue = v => { input.value = String(clamp(toNumber(v, min), min, max)); setPill(); };
 
         } else if (def.type === 'checkbox') {
+            // Avkrysningsboksen bærer selv etiketten: ingen egen tittel eller PÅ/AV-merke.
+            card.removeChild(head);
+
             const wrap = document.createElement('label');
             wrap.className = 'control-toggle-row';
             const input = document.createElement('input');
@@ -551,13 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
             wrap.appendChild(txt);
             card.appendChild(wrap);
 
-            setPill = () => { pill.textContent = input.checked ? 'PÅ' : 'AV'; };
             input.addEventListener('change', () => {
                 paramState[key] = input.checked;
-                setPill();
                 commit();
             });
-            card.__setValue = v => { input.checked = !!v; setPill(); };
+            card.__setValue = v => { input.checked = !!v; };
 
         } else if (def.type === 'buttons' || def.type === 'select') {
             const options = Array.isArray(def.options) ? def.options : [];
@@ -565,6 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (def.type === 'select') {
                 const select = document.createElement('select');
                 select.className = 'control-select';
+                select.setAttribute('aria-label', def.label || key);
                 options.forEach(o => {
                     const opt = document.createElement('option');
                     opt.value = String(o.value);
@@ -588,6 +592,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const group = document.createElement('div');
                 group.className = 'btn-group-pill control-buttons';
+                group.setAttribute('role', 'group');
+                group.setAttribute('aria-label', def.label || key);
                 const buttons = [];
 
                 options.forEach(o => {
@@ -706,10 +712,108 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function hideFasit() { fasitOverlay.classList.add('hidden'); }
 
-    btnShowFasit.addEventListener('click', showFasit);
+    if (btnShowFasit) btnShowFasit.addEventListener('click', showFasit);
     btnCloseFasit.addEventListener('click', hideFasit);
     fasitOverlay.addEventListener('click', e => { if (e.target === fasitOverlay) hideFasit(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideFasit(); });
+
+    // =========================================================================
+    // 6b. INFO-DIALOG
+    // =========================================================================
+    // Innholdet står i index.html. Dialogen er åpen når siden lastes, og kan
+    // åpnes igjen med Info-knappen over kurvene. Den lukkes bare med knappene
+    // eller Escape, ikke ved klikk utenfor, så introen ikke forsvinner ved et uhell.
+    const infoOverlay = document.getElementById('infoOverlay');
+    const infoModal = document.getElementById('infoModal');
+    const infoTextView = document.getElementById('infoTextView');
+    const infoImageView = document.getElementById('infoImageView');
+    const infoLegendView = document.getElementById('infoLegendView');
+    const infoImage = document.getElementById('infoImage');
+    const infoImageMissing = document.getElementById('infoImageMissing');
+    const btnShowInfo = document.getElementById('btnShowInfo');
+    const btnShowInfoImage = document.getElementById('btnShowInfoImage');
+    const btnInfoBack = document.getElementById('btnInfoBack');
+    const btnShowInfoLegend = document.getElementById('btnShowInfoLegend');
+    const btnLegendBack = document.getElementById('btnLegendBack');
+    const btnCloseInfo = document.getElementById('btnCloseInfo');
+    const btnCloseInfoX = document.getElementById('btnCloseInfoX');
+
+    function isInfoOpen() { return !infoOverlay.classList.contains('hidden'); }
+
+    function showInfoText() {
+        infoImageView.classList.add('hidden');
+        infoLegendView.classList.add('hidden');
+        infoTextView.classList.remove('hidden');
+        infoModal.classList.remove('info-modal--wide');
+    }
+
+    function showInfoImage() {
+        infoTextView.classList.add('hidden');
+        infoImageView.classList.remove('hidden');
+        infoModal.classList.add('info-modal--wide');
+        btnInfoBack.focus();
+    }
+
+    // Forklaring av kurver, markører og måleverdier (visning 3)
+    function showInfoLegend() {
+        infoTextView.classList.add('hidden');
+        infoLegendView.classList.remove('hidden');
+        infoLegendView.scrollTop = 0;
+        btnLegendBack.focus();
+    }
+
+    function openInfo() {
+        showInfoText();
+        infoOverlay.classList.remove('hidden');
+        btnCloseInfoX.focus();
+    }
+
+    function closeInfo() {
+        infoOverlay.classList.add('hidden');
+        btnShowInfo.focus();
+    }
+
+    // Plassholder til bildet er lagt inn i bilder/. Bildet kan ha feilet allerede
+    // før denne koden kjører, derfor sjekkes også complete/naturalWidth.
+    function showImageMissing() {
+        infoImage.classList.add('hidden');
+        infoImageMissing.classList.remove('hidden');
+    }
+    infoImage.addEventListener('error', showImageMissing);
+    if (infoImage.complete && infoImage.naturalWidth === 0) showImageMissing();
+
+    btnShowInfo.addEventListener('click', openInfo);
+    btnShowInfoImage.addEventListener('click', showInfoImage);
+    btnInfoBack.addEventListener('click', () => { showInfoText(); btnShowInfoImage.focus(); });
+    btnShowInfoLegend.addEventListener('click', showInfoLegend);
+    btnLegendBack.addEventListener('click', () => { showInfoText(); btnShowInfoLegend.focus(); });
+    btnCloseInfo.addEventListener('click', closeInfo);
+    btnCloseInfoX.addEventListener('click', closeInfo);
+
+    // Hold tastaturfokus inne i dialogen mens den er åpen
+    infoOverlay.addEventListener('keydown', e => {
+        if (e.key !== 'Tab') return;
+        const focusable = Array.from(infoModal.querySelectorAll('button')).filter(b => b.offsetParent !== null);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // Escape: fra bildet eller forklaringen tilbake til teksten, ellers lukk den dialogen som er åpen
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        if (isPcNoticeOpen()) return;
+        if (isInfoOpen()) {
+            if (!infoImageView.classList.contains('hidden')) { showInfoText(); btnShowInfoImage.focus(); }
+            else if (!infoLegendView.classList.contains('hidden')) { showInfoText(); btnShowInfoLegend.focus(); }
+            else closeInfo();
+        } else {
+            hideFasit();
+        }
+    });
+
+    if (isInfoOpen()) btnCloseInfoX.focus({ preventScroll: true });
 
     // =========================================================================
     // 7. MONITOR: MÅLEVERDIER OG ALARMER
@@ -754,114 +858,97 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cardMetricMv) cardMetricMv.classList.toggle('metric-alarm-active', hasApnea);
         if (cardMetricRR) cardMetricRR.classList.toggle('metric-alarm-active', hasApnea || has('high_rr') || has('low_rr'));
 
-        const isExpHold = simulator.isExpiratoryHoldActive();
-        const isInspHold = simulator.isInspiratoryHoldActive();
+        updateSync();
+    }
 
-        if (isExpHold) {
-            if (titleSecPeep) titleSecPeep.innerHTML = '<span style="color: var(--color-warning);">PEEP<sub>total</sub></span>';
-            if (dispPeepPeepi) dispPeepPeepi.innerHTML = `<span style="color: var(--color-warning);">${simulator.getHoldPeepTotal().toFixed(1)}</span>`;
-            if (dispPeepTot) dispPeepTot.innerHTML = `Hold aktiv: <strong>${simulator.getHoldPeepTotal().toFixed(1)}</strong> cmH₂O`;
-        } else {
-            if (titleSecPeep) titleSecPeep.innerHTML = 'PEEP / PEEP<sub>i</sub>';
-            if (dispPeepPeepi) dispPeepPeepi.textContent = `${simulator.settings.epap.toFixed(1)} / ${m.peepi.toFixed(1)}`;
-            if (dispPeepTot) {
-                if (m.holdPeepTotal !== null && m.holdPeepTotal !== undefined) {
-                    dispPeepTot.innerHTML = `Avdekket PEEP<sub>tot</sub>: <strong>${simulator.getHoldPeepTotal().toFixed(1)}</strong> cmH₂O`;
-                } else {
-                    dispPeepTot.innerHTML = `PEEP<sub>tot</sub>: ${(simulator.settings.epap + m.peepi).toFixed(1)} cmH₂O`;
-                }
-            }
+    /**
+     * Samspill pasient–respirator over siste 60 s. Utløste pust er simulatorens
+     * egen telling av pasientutløste pust (samme vindu som RR); mislykkede
+     * pustforsøk telles i innsatsloggen (state.efforts). Pasientens pustforsøk er
+     * summen av de to; autotrigger og backup-pust er ikke pasientens forsøk.
+     * Før det har gått 60 s skaleres tellingen til per minutt, som RR i simulatoren.
+     */
+    const SYNC_MIN_SECONDS = 10;      // kortere vindu gir for usikre tall
+    const ASYNC_INDEX_LIMIT = 10;     // % — over dette regnes asynkronien som betydelig
+
+    function updateSync() {
+        const t = simulator.state.totalTime;
+        if (simulator.patientDrive.rrSpont <= 0) {
+            setSync('--', '--', '--', '--', null, 'Passiv pasient – ingen pustforsøk');
+            return;
+        }
+        if (t < SYNC_MIN_SECONDS) {
+            setSync('--', '--', '--', '--', null, 'Venter på målinger …');
+            return;
         }
 
-        if (isInspHold) {
-            if (titleSecPplat) titleSecPplat.innerHTML = '<span style="color: #38bdf8;">P<sub>plat</sub> (Hold)</span>';
-            if (dispPplatSec) dispPplatSec.innerHTML = `<span style="color: #38bdf8;">${simulator.getHoldPplat().toFixed(1)}</span>`;
-            if (dispPplatFoot) dispPplatFoot.innerHTML = `Hold aktiv: <strong>${simulator.getHoldPplat().toFixed(1)}</strong> cmH₂O`;
-        } else if (m.holdPplat !== null && m.holdPplat !== undefined) {
-            if (titleSecPplat) titleSecPplat.innerHTML = 'P<sub>plat</sub> (Hold)';
-            if (dispPplatSec) dispPplatSec.textContent = simulator.getHoldPplat().toFixed(1);
-            if (dispPplatFoot) dispPplatFoot.innerHTML = 'Avdekket ved holdmanøver';
-        } else {
-            if (titleSecPplat) titleSecPplat.innerHTML = 'P<sub>plat</sub> (Platå)';
-            if (dispPplatSec) dispPplatSec.textContent = '--';
-            if (dispPplatFoot) dispPplatFoot.textContent = 'Bruk insp. hold';
-        }
+        const missedCount = simulator.state.efforts.filter(e => e.t >= t - 60 && e.type === 'missed').length;
+        const missed = Math.round(missedCount * 60 / Math.min(60, t));
+        const triggered = simulator.state.measured.rrSpont || 0;
 
-        const p01 = simulator.getP01();
-        if (dispP01Sec) {
-            if (simulator.patientDrive.rrSpont > 0) {
-                dispP01Sec.textContent = p01.toFixed(1);
-                if (dispP01Foot) {
-                    dispP01Foot.textContent = p01 < 1.0 ? 'Lav drive (< 1,0)'
-                        : (p01 <= 3.5 ? 'Normal drive (1,0–3,5)' : 'Høy drive (> 3,5)');
-                }
-            } else {
-                dispP01Sec.textContent = '--';
-                if (dispP01Foot) dispP01Foot.textContent = 'Passiv pasient';
-            }
-        }
+        const index = simulator.state.measured.asynchronyIndex || 0;
+        const ok = index <= ASYNC_INDEX_LIMIT;
+        setSync(triggered + missed, triggered, missed, index, ok,
+            ok ? 'God synkronisering' : 'Betydelig asynkroni');
+    }
 
-        if (dispLeakSec) dispLeakSec.innerHTML = `${m.leak.toFixed(1)} <span class="sub-val-secondary">(${m.leakPercent.toFixed(0)}%)</span>`;
-        if (dispLeakStatus) {
-            dispLeakStatus.textContent = (m.leak > 40 || m.leakPercent > 40) ? '⚠️ Høy lekkasje'
-                : ((m.leak > 15 || m.leakPercent > 20) ? 'Moderat lekkasje' : 'Tett krets');
-        }
+    function setSync(efforts, triggered, missed, index, ok, status) {
+        valEfforts.textContent = efforts;
+        valTriggered.textContent = triggered;
+        valMissed.textContent = missed;
+        valAsyncIndex.textContent = index;
+        syncStatus.textContent = status;
+        syncCard.classList.toggle('sync-ok', ok === true);
+        syncCard.classList.toggle('sync-bad', ok === false);
     }
 
     // =========================================================================
-    // 8. MONITOR-VALG OG HOLDMANØVRER
+    // 8. MONITOR-VALG OG HOVEDMENY
     // =========================================================================
     if (checkShowTrueCurves) {
         checkShowTrueCurves.addEventListener('change', () => {
             renderer.showTrueCurves = checkShowTrueCurves.checked;
         });
     }
-    if (checkShowPes) {
-        checkShowPes.addEventListener('change', () => {
-            renderer.showPesTrack = checkShowPes.checked;
-            renderer.resize();   // sporlayouten må regnes om
-        });
-    }
 
-    function attachHoldButton(btn, start, stop, name) {
-        if (!btn) return;
-        let holding = false;
-        const begin = e => {
-            e.preventDefault();
-            if (holding) return;
-            holding = true;
-            btn.classList.add('active');
-            start();
-            if (holdStatusIndicator) {
-                holdStatusIndicator.textContent = `🛑 ${name} aktiv … låser luftveien (maks 5 s)`;
-                holdStatusIndicator.style.color = 'var(--color-accent)';
-            }
-        };
-        const end = () => {
-            if (!holding) return;
-            holding = false;
-            btn.classList.remove('active');
-            stop();
-            if (holdStatusIndicator) {
-                holdStatusIndicator.textContent = `Avsluttet ${name}. Måling oppdatert i panelet.`;
-                holdStatusIndicator.style.color = '';
-                setTimeout(() => {
-                    if (!holding && holdStatusIndicator) {
-                        holdStatusIndicator.textContent = 'Hold nede knappen for å låse luftveien (maks 5 s)';
-                    }
-                }, 2500);
-            }
-        };
-        btn.addEventListener('mousedown', begin);
-        btn.addEventListener('touchstart', begin, { passive: false });
-        btn.addEventListener('mouseup', end);
-        btn.addEventListener('mouseleave', end);
-        btn.addEventListener('touchend', end);
-        btn.addEventListener('touchcancel', end);
+    // Pes-sporet (muskelinnsats) er skjult ved start; deltakerne slår det på
+    // selv med knappen ved behov.
+    function setPesTrack(on) {
+        renderer.showPesTrack = on;
+        btnShowPes.setAttribute('aria-pressed', String(on));
+        btnShowPes.classList.toggle('active', on);
+        btnShowPesText.innerHTML = on
+            ? 'Skjul muskelinnsats (P<sub>es</sub>)'
+            : 'Vis muskelinnsats (P<sub>es</sub>)';
+        renderer.resize();   // sporlayouten må regnes om
     }
+    btnShowPes.addEventListener('click', () => setPesTrack(!renderer.showPesTrack));
 
-    attachHoldButton(btnInspHold, () => simulator.startInspiratoryHold(), () => simulator.stopInspiratoryHold(), 'Inspiratorisk hold');
-    attachHoldButton(btnExpHold, () => simulator.startExpiratoryHold(), () => simulator.stopExpiratoryHold(), 'Ekspiratorisk hold');
+    // Dummy: kobles til hovedmenyen når scenariene bygges inn i hovedprogrammet.
+    // Hendelsen «scenario:hovedmeny» kan fanges opp av programmet rundt.
+    const btnMainMenu = document.getElementById('btnMainMenu');
+    function goToMainMenu() {
+        window.dispatchEvent(new CustomEvent('scenario:hovedmeny'));
+        showToast('Hovedmenyen er ikke koblet til ennå.');
+    }
+    btnMainMenu.addEventListener('click', goToMainMenu);
+
+    // Varsel om at denne delen av kurset må tas på PC: vises på smale skjermer
+    // og på berøringsenheter uten mus. Kan lukkes med «Vis likevel».
+    const pcNotice = document.getElementById('pcNotice');
+    const btnPcNoticeDismiss = document.getElementById('btnPcNoticeDismiss');
+    const notPcQuery = window.matchMedia('(max-width: 760px), (hover: none) and (pointer: coarse)');
+
+    function isPcNoticeOpen() { return !pcNotice.classList.contains('hidden'); }
+
+    if (notPcQuery.matches) {
+        pcNotice.classList.remove('hidden');
+        btnPcNoticeDismiss.focus({ preventScroll: true });
+    }
+    btnPcNoticeDismiss.addEventListener('click', () => {
+        pcNotice.classList.add('hidden');
+        if (isInfoOpen()) btnCloseInfoX.focus({ preventScroll: true });
+    });
 
     // Pause / frys
     let isPaused = false;
@@ -928,7 +1015,44 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(loop);
     }
 
-    window.addEventListener('resize', () => renderer.resize());
+    // Kurveflaten får samme høyde som sidepanelet, så kolonnene slutter likt uansett
+    // hvor mange innstillinger scenariet har. Høyden avhenger bare av panelets
+    // innhold, ikke av iframen, så Rise kan ikke gi den en voksesløyfe.
+    // Når panelet ligger under kurvene (smal blokk), brukes fast høyde.
+    const sidePanel = document.querySelector('.side-panel');
+    const monitorToolbar = document.querySelector('.monitor-toolbar');
+    const canvasContainer = renderer.canvas.parentElement;
+    const stackedQuery = window.matchMedia('(max-width: 900px)');
+    const CANVAS_MIN_HEIGHT = 560;
+    const CANVAS_STACKED_HEIGHT = 600;
+    const COLUMN_GAP = 8;             // gap i .monitor-left-col
+
+    function fitCanvasToPanel() {
+        const target = stackedQuery.matches
+            ? CANVAS_STACKED_HEIGHT
+            : Math.max(CANVAS_MIN_HEIGHT, sidePanel.offsetHeight - monitorToolbar.offsetHeight - COLUMN_GAP);
+        if (canvasContainer.offsetHeight === target) return;
+        canvasContainer.style.height = target + 'px';
+        canvasContainer.style.minHeight = target + 'px';
+        renderer.resizeCanvas();
+    }
+    window.addEventListener('resize', fitCanvasToPanel);
+
+    // Følg beholderens bredde, ikke bare vinduet: i en iframe (Rise) kan bredden
+    // endre seg uten resize-hendelse. resizeCanvas() gjør ingenting hvis størrelsen er lik.
+    if (window.ResizeObserver) {
+        new ResizeObserver(() => renderer.resizeCanvas()).observe(renderer.canvas.parentElement);
+    }
+
+    // Articulate Rise (kodeblokk): meld blokken fullført, så deltakeren ikke blir
+    // stoppet hvis blokken er satt som krav for å gå videre.
+    function notifyComplete() {
+        try {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({ type: 'complete' }, '*');
+            }
+        } catch (e) { /* ikke innebygd */ }
+    }
 
     // =========================================================================
     // 10. OPPSTART — finn og last scenariofilen
@@ -942,7 +1066,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function tryLoad(data, source) {
         try {
             loadScenario(data);
-            showToast(`✅ Scenario lastet fra <strong>${escapeHtml(source)}</strong>.`);
             return true;
         } catch (err) {
             showLoader(`⚠️ Kunne ikke lese scenariet: ${escapeHtml(err.message)}`);
@@ -992,7 +1115,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tegn tomme kurver umiddelbart, og last så scenariet.
     renderer.initCanvas();
+    setPesTrack(false);
     updateModeBadge();
     bootstrap();
+    notifyComplete();
     requestAnimationFrame(loop);
 });

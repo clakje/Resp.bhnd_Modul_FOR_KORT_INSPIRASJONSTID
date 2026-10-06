@@ -226,7 +226,7 @@ class WaveformRenderer {
         this.dynamicScales.volMax = 200;
         this.dynamicScales.pesMax = 10;
         this.dynamicScales.pesMin = -10;
-        this.resizeCanvas();
+        this.resizeCanvas(true);
     }
 
     _clearBuffers() {
@@ -241,15 +241,20 @@ class WaveformRenderer {
     }
 
     resize() {
-        this.resizeCanvas();
+        this.resizeCanvas(true);
     }
 
-    resizeCanvas() {
+    // force = false (vindus-resize): hopp over når størrelsen er uendret, ellers
+    // tømmes kurvene hver gang en innebyggende side (f.eks. Rise) endrer iframe-høyden.
+    resizeCanvas(force) {
         const rect = this.canvas.parentElement.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         
         const width = Math.floor(rect.width);
         const height = Math.max(480, Math.floor(rect.height));
+
+        if (!force && width === this.logicalWidth && height === this.logicalHeight && dpr === this._dpr) return;
+        this._dpr = dpr;
 
         this.canvas.width = width * dpr;
         this.canvas.height = height * dpr;
@@ -547,10 +552,10 @@ class WaveformRenderer {
         const tracks = [
             { id: 'paw', label: 'Paw', unit: 'cmH₂O', color: this.colors.pressure, top: 0, height: trackHeight },
             { id: 'flow', label: 'Flow', unit: 'L/min', color: this.colors.flow, top: trackHeight, height: trackHeight },
-            { id: 'vol', label: 'V', unit: 'ml', color: this.colors.volume, top: trackHeight * 2, height: trackHeight }
+            { id: 'vol', label: 'Volum', unit: 'ml', color: this.colors.volume, top: trackHeight * 2, height: trackHeight }
         ];
         if (this.showPesTrack) {
-            tracks.push({ id: 'pes', label: 'P_es', unit: 'cmH₂O', color: this.colors.pes, top: trackHeight * 3, height: trackHeight });
+            tracks.push({ id: 'pes', label: 'Pes', unit: 'cmH₂O', color: this.colors.pes, top: trackHeight * 3, height: trackHeight });
         }
 
         // 2. Rutenett, sekundmarkører og tidsakse
@@ -710,7 +715,7 @@ class WaveformRenderer {
             ctx.fillStyle = this.colors.pes;
             const pesPrefix = (pesVal !== null && pesVal > 0) ? '+' : '';
             const pesText = (pesVal !== null) ? `${pesPrefix}${pesVal.toFixed(1)}` : '--';
-            ctx.fillText(`P_es: ${pesText} cmH₂O`, cardX + 10, lineY);
+            ctx.fillText(`Pes:  ${pesText} cmH₂O`, cardX + 10, lineY);
         }
 
         ctx.restore();
@@ -1000,7 +1005,7 @@ class WaveformRenderer {
         ctx.fillStyle = vTrack.color;
         ctx.font = 'bold 12px "Segoe UI", sans-serif';
         ctx.textAlign = 'left';
-        ctx.fillText('V', 8, vTrack.top + 14);
+        ctx.fillText('Volum', 8, vTrack.top + 14);
         ctx.fillStyle = this.colors.text;
         ctx.font = '500 9px monospace';
         ctx.fillText('ml', 8, vTrack.top + 24);
@@ -1050,7 +1055,7 @@ class WaveformRenderer {
             ctx.fillStyle = pesTrack.color;
             ctx.font = 'bold 12px "Segoe UI", sans-serif';
             ctx.textAlign = 'left';
-            ctx.fillText('P_es', 8, pesTrack.top + 14);
+            ctx.fillText('Pes', 8, pesTrack.top + 14);
             ctx.fillStyle = this.colors.text;
             ctx.font = '500 9px monospace';
             ctx.fillText('cmH₂O', 8, pesTrack.top + 24);
