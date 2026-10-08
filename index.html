@@ -67,6 +67,40 @@
                         <span class="btn-pes-dot" aria-hidden="true"></span>
                         <span id="btnShowPesText">Vis muskelinnsats (P<sub>es</sub>)</span>
                     </button>
+
+                    <!-- Samspill pasient–respirator: knappen åpner et lite panel med pasientens innsatser mot pust respiratoren utløste -->
+                    <div class="sync-wrap">
+                        <button type="button" id="btnShowSync" class="btn-sync" aria-expanded="false" aria-controls="syncCard" title="Vis samspillet mellom pasient og respirator det siste minuttet">
+                            <span class="btn-sync-dot" aria-hidden="true"></span>
+                            <span>Samspill pasient–respirator</span>
+                        </button>
+                        <div class="sync-card sync-panel hidden" id="syncCard" role="region" aria-label="Samspill pasient–respirator">
+                            <div class="sync-header">
+                                <span class="sync-title">Samspill pasient–respirator</span>
+                                <span class="sync-window">siste 60 s</span>
+                                <button type="button" id="btnCloseSync" class="sync-close" aria-label="Lukk samspill pasient–respirator" title="Lukk">✕</button>
+                            </div>
+                            <dl class="sync-rows">
+                                <div class="sync-row">
+                                    <dt>Pasientens pustforsøk</dt>
+                                    <dd><span id="valEfforts">--</span> <span class="sync-unit">/min</span></dd>
+                                </div>
+                                <div class="sync-row">
+                                    <dt>Utløste pust</dt>
+                                    <dd><span id="valTriggered">--</span> <span class="sync-unit">/min</span></dd>
+                                </div>
+                                <div class="sync-row">
+                                    <dt>Mislykkede pustforsøk</dt>
+                                    <dd><span id="valMissed">--</span> <span class="sync-unit">/min</span></dd>
+                                </div>
+                            </dl>
+                            <div class="sync-index">
+                                <span class="sync-index-label">Asynkroniindeks</span>
+                                <span class="sync-index-value"><span id="valAsyncIndex">--</span> %</span>
+                            </div>
+                            <div class="sync-status" id="syncStatus">Venter på målinger …</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Canvas med kurvene (Paw, Flow, Volum, Pes) -->
@@ -113,33 +147,6 @@
                         </div>
                         <div class="metric-value" id="valRR">--</div>
                     </div>
-                </div>
-
-                <!-- Samspill pasient–respirator: pasientens innsatser mot pust respiratoren utløste -->
-                <div class="sync-card" id="syncCard">
-                    <div class="sync-header">
-                        <span class="sync-title">Samspill pasient–respirator</span>
-                        <span class="sync-window">siste 60 s</span>
-                    </div>
-                    <dl class="sync-rows">
-                        <div class="sync-row">
-                            <dt>Pasientens pustforsøk</dt>
-                            <dd><span id="valEfforts">--</span> <span class="sync-unit">/min</span></dd>
-                        </div>
-                        <div class="sync-row">
-                            <dt>Utløste pust</dt>
-                            <dd><span id="valTriggered">--</span> <span class="sync-unit">/min</span></dd>
-                        </div>
-                        <div class="sync-row">
-                            <dt>Mislykkede pustforsøk</dt>
-                            <dd><span id="valMissed">--</span> <span class="sync-unit">/min</span></dd>
-                        </div>
-                    </dl>
-                    <div class="sync-index">
-                        <span class="sync-index-label">Asynkroniindeks</span>
-                        <span class="sync-index-value"><span id="valAsyncIndex">--</span> %</span>
-                    </div>
-                    <div class="sync-status" id="syncStatus">Venter på målinger …</div>
                 </div>
 
                 <!-- Autogenererte kontroller for parameterne forfatteren gjorde justerbare -->

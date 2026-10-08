@@ -808,6 +808,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!infoImageView.classList.contains('hidden')) { showInfoText(); btnShowInfoImage.focus(); }
             else if (!infoLegendView.classList.contains('hidden')) { showInfoText(); btnShowInfoLegend.focus(); }
             else closeInfo();
+        } else if (isSyncPanelOpen()) {
+            setSyncPanel(false);
+            btnShowSync.focus();
         } else {
             hideFasit();
         }
@@ -901,6 +904,23 @@ document.addEventListener('DOMContentLoaded', () => {
         syncCard.classList.toggle('sync-ok', ok === true);
         syncCard.classList.toggle('sync-bad', ok === false);
     }
+
+    // Samspillpanelet åpnes med knappen over kurvene og lukkes med knappen, krysset
+    // eller Escape. Det lukkes ikke ved klikk utenfor, så deltakeren kan endre
+    // innstillinger i sidepanelet og se effekten mens panelet er åpent.
+    const btnShowSync = document.getElementById('btnShowSync');
+    const btnCloseSync = document.getElementById('btnCloseSync');
+
+    function isSyncPanelOpen() { return !syncCard.classList.contains('hidden'); }
+
+    function setSyncPanel(open) {
+        syncCard.classList.toggle('hidden', !open);
+        btnShowSync.setAttribute('aria-expanded', String(open));
+        btnShowSync.classList.toggle('active', open);
+    }
+
+    btnShowSync.addEventListener('click', () => setSyncPanel(!isSyncPanelOpen()));
+    btnCloseSync.addEventListener('click', () => { setSyncPanel(false); btnShowSync.focus(); });
 
     // =========================================================================
     // 8. MONITOR-VALG OG HOVEDMENY

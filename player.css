@@ -147,6 +147,77 @@ canvas#waveformCanvas {
 .sync-ok .sync-status { background: var(--color-success); color: #04130a; }
 .sync-bad .sync-status { background: var(--color-warning); color: #1a1300; }
 
+/* Knappen i verktøylinjen og panelet den åpner over kurvene */
+.sync-wrap { position: relative; }
+
+.btn-sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--text-main);
+    border: 1px solid var(--color-accent);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.btn-sync:hover { background: rgba(56, 189, 248, 0.25); }
+
+.btn-sync.active {
+    background: var(--color-accent);
+    color: #04121c;
+}
+
+.btn-sync-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+}
+
+.btn-sync.active .btn-sync-dot { background: currentColor; }
+
+.btn-sync:focus-visible,
+.sync-close:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.sync-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 50;
+    width: min(380px, calc(100vw - 48px));
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+.sync-panel.hidden { display: none; }
+
+.sync-panel .sync-header { align-items: center; }
+.sync-panel .sync-window { margin-left: auto; white-space: nowrap; }
+
+.sync-close {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-highlight);
+    color: var(--text-main);
+    font-size: 12px;
+    line-height: 1;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.sync-close:hover { border-color: var(--color-accent); }
+
 /* ------------------------------------------------------ Scenario-metadata */
 .scenario-card { gap: 10px; }
 
