@@ -44,7 +44,7 @@ const GRENSER = {
     VC_MIN_PEAK_FLOW: 0.05,      // L/s — nedre grense for innstilt toppflow (unngår 0-divisjon i Ti-estimatet)
 
     // 6.2 Ikke-lineær trykk/volum-kurve
-    ELASTANS_FAKTOR_MIN: 0.3,    // — nedre klipp på stress index-multiplikatoren. Uten klipp går den mot uendelig når tidalvolumet nærmer seg null (dV^(SI-1) er singulær i 0).
+    ELASTANS_FAKTOR_MIN: 0.3,    // — nedre klipp på stress index-multiplikatoren. Uten klipp går den mot uendelig når tidevolumet nærmer seg null (dV^(SI-1) er singulær i 0).
     ELASTANS_FAKTOR_MAKS: 3.0,   // — øvre klipp på samme multiplikator
     UIP_COMPLIANCE_ANDEL: 0.35,  // — ettergivelighet over øvre knekkpunkt som andel av ettergivelighet under. 0,35 gir den karakteristiske «beaking»-formen ved overdistensjon.
     REKRUTTERING_TAU: 0.20,      // s — tidskonstant for at rekruttert volum fylles og tømmes
@@ -349,7 +349,7 @@ class VentilatorSimulator {
             ipap: 8,                // cmH2O (Inspiratory Positive Airway Pressure / PC over PEEP)
 
             // FASE 6 (6.1): Volumkontroll (VC)
-            vcTidalVolume: 500,        // ml - Innstilt tidalvolum som skal leveres
+            vcTidalVolume: 500,        // ml - Innstilt tidevolum som skal leveres
             vcPeakFlow: 60,            // L/min - Innstilt inspiratorisk toppflow
             vcFlowPattern: 'constant', // 'constant' (firkant) eller 'decelerating' (desellererende rampe)
             inspPause: 0.0,            // sekunder - Inspiratorisk pause etter levert volum (0–1.0 s)
@@ -376,8 +376,8 @@ class VentilatorSimulator {
             alarmLeakUnit: 'lmin',  // 'lmin' | 'percent'
             alarmLeakLimit: 40,     // L/min - grense for høy maskelekkasje (10–60 L/min)
             alarmLeakPercentLimit: 50, // % - grense for høy maskelekkasje i prosent (10–80 %)
-            alarmLowVtLimit: 300,   // ml - grense for lavt tidalvolum (100–600 ml)
-            alarmHighVtLimit: 800,  // ml - grense for høyt tidalvolum (300–1000 ml)
+            alarmLowVtLimit: 300,   // ml - grense for lavt tidevolum (100–600 ml)
+            alarmHighVtLimit: 800,  // ml - grense for høyt tidevolum (300–1000 ml)
             alarmLowRrLimit: 0,     // /min - grense for lav respirasjonsfrekvens (0–25 /min, 0 = av)
             alarmHighRrLimit: 30,   // /min - grense for høy respirasjonsfrekvens (20–50 /min)
             alarmHighPpeak: 40,     // cmH2O - innstilt øvre alarmgrense (0–50 cmH2O, effektiv kuttgrense er 10 cmH2O under)
@@ -601,7 +601,7 @@ class VentilatorSimulator {
         const si = this.patient.stressIndex;
         if (this.patient.stressIndexEnabled && si !== undefined && Math.abs(si - 1.0) > 0.01) {
             // Referansevolum: 8 ml/kg IBW. En ren pasientegenskap, uavhengig av maskininnstillingene,
-            // slik at kurven ikke endrer seg når forfatteren justerer tidalvolumet.
+            // slik at kurven ikke endrer seg når forfatteren justerer tidevolumet.
             const Vref = Math.max(0.05, 0.008 * this.getPatientIBW());
             const raw = Math.pow(Math.max(1e-6, dV / Vref), si - 1.0);
             const k = Math.max(GRENSER.ELASTANS_FAKTOR_MIN, Math.min(GRENSER.ELASTANS_FAKTOR_MAKS, raw));
@@ -633,7 +633,7 @@ class VentilatorSimulator {
      *
      * Firkantflow holder settpunktet gjennom hele innpustet. Desellererende rampe
      * faller lineært mot VC_DECEL_END_FRAC av toppflow, styrt av hvor stor andel
-     * av tidalvolumet som er levert — da treffer rampen sluttpunktet nøyaktig når
+     * av tidevolumet som er levert — da treffer rampen sluttpunktet nøyaktig når
      * volumet er fullt, uansett hvordan motstand og ettergivelighet påvirker Ti.
      *
      * @returns {number} Målflow (L/s). Null under den inspiratoriske pausen.
@@ -1708,8 +1708,8 @@ class VentilatorSimulator {
                 id: 'low_vt',
                 priority: 3,
                 type: 'warning',
-                title: 'LAVT TIDALVOLUM',
-                msg: `VTE under ${this.settings.alarmLowVtLimit} ml i 3 påfølgende pust (siste: ${this.state.measured.vt} ml).`
+                title: 'LAVT TIDEVOLUM',
+                msg: `VTe under ${this.settings.alarmLowVtLimit} ml i 3 påfølgende pust (siste: ${this.state.measured.vt} ml).`
             });
         }
         if (this.state.alarmState.highVtStreak >= 3) {
@@ -1717,8 +1717,8 @@ class VentilatorSimulator {
                 id: 'high_vt',
                 priority: 3,
                 type: 'warning',
-                title: 'HØYT TIDALVOLUM',
-                msg: `VTE over ${this.settings.alarmHighVtLimit} ml i 3 påfølgende pust (siste: ${this.state.measured.vt} ml).`
+                title: 'HØYT TIDEVOLUM',
+                msg: `VTe over ${this.settings.alarmHighVtLimit} ml i 3 påfølgende pust (siste: ${this.state.measured.vt} ml).`
             });
         }
         if (this.settings.alarmLowRrLimit > 0 && this.state.measured.rrTotal < this.settings.alarmLowRrLimit && !this.state.isApneaAlarm) {
@@ -1821,7 +1821,7 @@ class VentilatorSimulator {
         // VTE fra det fullførte utpustet
         this.state.VTE = Math.round(this._vteAccum);
 
-        // C3: Spor påfølgende pust med lavt eller høyt tidalvolum
+        // C3: Spor påfølgende pust med lavt eller høyt tidevolum
         if (this.state.breathCount > 1) {
             if (this.state.VTE < this.settings.alarmLowVtLimit) {
                 this.state.alarmState.lowVtStreak++;
@@ -1948,7 +1948,7 @@ class VentilatorSimulator {
         const drivingPressure = this.settings.ipap - this.settings.epap;
         const peepi = this.state.PEEPi || 0;
         const erVolumkontroll = (this.settings.mode === 'VC');
-        // 6.1: I volumkontroll er tidalvolumet innstilt, ikke et resultat av drivtrykket.
+        // 6.1: I volumkontroll er tidevolumet innstilt, ikke et resultat av drivtrykket.
         // Da er det drivtrykket som er den avhengige størrelsen, og pasientens innsats
         // senker trykket i stedet for å øke volumet.
         const machineVt = erVolumkontroll
@@ -1974,7 +1974,7 @@ class VentilatorSimulator {
 
         // Regel 2: Restriksjon (C <= 30)
         if (C <= 30) {
-            rules.push(`⚠️ <strong>Restriksjon (C = ${C} ml/cmH₂O):</strong> Stive lunger med lav ettergivelighet gir rask trykkutjevning, men krever vesentlig høyere drivtrykk (ΔP) for å oppnå fysiologisk tidalvolum (forventet kun ca. ${theoreticalVt} ml ved ΔP ${drivingPressure} cmH₂O).`);
+            rules.push(`⚠️ <strong>Restriksjon (C = ${C} ml/cmH₂O):</strong> Stive lunger med lav ettergivelighet gir rask trykkutjevning, men krever vesentlig høyere drivtrykk (ΔP) for å oppnå fysiologisk tidevolum (forventet kun ca. ${theoreticalVt} ml ved ΔP ${drivingPressure} cmH₂O).`);
         }
 
         // Regel 3: Auto-PEEP (PEEPi > 2)
@@ -2012,7 +2012,7 @@ class VentilatorSimulator {
         const leakPct = this.state.measured.leakPercent || 0;
         const leakVal = this.state.measured.leak || 0;
         if (leakPct > 25 || leakVal > 25) {
-            rules.push(`💨 <strong>Høy maskelekkasje (${leakVal.toFixed(1)} L/min, ${leakPct.toFixed(0)} %):</strong> Kan forsinke flow-cycling (fare for Ti-max avbrudd), utløse autotrigging og skape feilaktig avlesning av ekspirert tidalvolum.`);
+            rules.push(`💨 <strong>Høy maskelekkasje (${leakVal.toFixed(1)} L/min, ${leakPct.toFixed(0)} %):</strong> Kan forsinke flow-cycling (fare for Ti-max avbrudd), utløse autotrigging og skape feilaktig avlesning av ekspirert tidevolum.`);
         }
 
         // Regel 6: Cyclingårsak (lastCycleReason)
@@ -2031,13 +2031,13 @@ class VentilatorSimulator {
         if (vtPerKg >= 6 && vtPerKg <= 8) {
             vtComment = `Fysiologisk lungeprotektivt volum (6–8 ml/kg IBW).`;
         } else if (vtPerKg < 6 && vtPerKg > 0) {
-            vtComment = `Lavt tidalvolum (< 6 ml/kg IBW) — fare for hypoventilasjon / atelektaser.`;
+            vtComment = `Lavt tidevolum (< 6 ml/kg IBW) — fare for hypoventilasjon / atelektaser.`;
         } else if (vtPerKg > 8) {
-            vtComment = `Høyt tidalvolum (> 8 ml/kg IBW) — fare for volutrauma / overstrekk.`;
+            vtComment = `Høyt tidevolum (> 8 ml/kg IBW) — fare for volutrauma / overstrekk.`;
         } else {
             vtComment = `Beregnet mot idealvekt (${ibw} kg).`;
         }
-        rules.push(`👤 <strong>Tidalvolum:</strong> Målt ${this.state.measured.vt} ml (${vtPerKg.toFixed(1)} ml/kg IBW for ${ibw} kg). ${vtComment}`);
+        rules.push(`👤 <strong>Tidevolum:</strong> Målt ${this.state.measured.vt} ml (${vtPerKg.toFixed(1)} ml/kg IBW for ${ibw} kg). ${vtComment}`);
 
         // Hvis verken obstruksjon eller restriksjon er aktiv, vis normalmekanikk
         if (R_insp < 12 && C > 30) {

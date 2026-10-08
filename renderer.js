@@ -4,7 +4,7 @@
  * STANDARD 3-SPORS MONITOR:
  * - 1. spor: Paw (Luftveistrykk, gul / amber)
  * - 2. spor: Flow (Flow - Q_meas, klinisk grønn)
- * - 3. spor: Volum (Tidalvolum - V_meas, cyan / lys blå)
+ * - 3. spor: Volum (Tidevolum - V_meas, cyan / lys blå)
  * 
  * FUNKSJONER:
  * - C7: Min/Maks-konvolutt per piksel for Paw, Flow og Volum (fanger opp korte hendelser som trykkoversving og terminal-spikes)
