@@ -393,11 +393,6 @@ document.addEventListener('DOMContentLoaded', () => {
             (buckets[group] || buckets.patient).push(def);
         });
 
-        const header = document.createElement('div');
-        header.className = 'readout-section-header controls-heading';
-        header.innerHTML = '<span class="readout-group-title">Innstillinger du kan endre</span>';
-        controlsContainer.appendChild(header);
-
         let total = 0;
         ['machine', 'patient', 'alarms'].forEach(group => {
             const list = buckets[group];
