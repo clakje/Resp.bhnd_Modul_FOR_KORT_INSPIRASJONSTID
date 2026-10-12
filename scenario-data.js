@@ -94,6 +94,8 @@ window.SCENARIO_DATA = {
       "epap",
       "fio2",
       "cycling",
+      "triggerMode",
+      "trigger",
       "riseTime"
     ],
     "controls": [
@@ -133,13 +135,58 @@ window.SCENARIO_DATA = {
       {
         "key": "cycling",
         "group": "machine",
-        "label": "Cycling / E-sense",
+        "label": "Inspiratorisk avslutning",
         "type": "range",
         "unit": "%",
         "default": 65,
         "min": 5,
         "max": 90,
         "step": 5
+      },
+      {
+        "key": "triggerMode",
+        "group": "machine",
+        "label": "Triggertype",
+        "type": "buttons",
+        "unit": null,
+        "default": "flow",
+        "options": [
+          {
+            "value": "flow",
+            "label": "Flowtrigger"
+          },
+          {
+            "value": "pressure",
+            "label": "Trykktrigger"
+          }
+        ]
+      },
+      {
+        "key": "trigger",
+        "group": "machine",
+        "label": "Triggersensitivitet",
+        "type": "range",
+        "unit": "L/min",
+        "default": 2,
+        "min": 1,
+        "max": 5,
+        "step": 0.5,
+        "modes": {
+          "flow": {
+            "label": "Triggersensitivitet (flow)",
+            "unit": "L/min",
+            "min": 1,
+            "max": 5,
+            "step": 0.5
+          },
+          "pressure": {
+            "label": "Triggersensitivitet (trykk)",
+            "unit": "cmH₂O",
+            "min": 0.2,
+            "max": 5,
+            "step": 0.1
+          }
+        }
       },
       {
         "key": "riseTime",
