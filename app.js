@@ -514,6 +514,9 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const apply = () => {
+                // IPAP kan senkes til 1 cmH₂O over EPAP, og EPAP heves til 1 cmH₂O under IPAP — ikke forbi.
+                if (key === 'ipap') input.value = String(Math.max(parseFloat(input.value), num('epap', 0) + 1));
+                if (key === 'epap') input.value = String(Math.min(parseFloat(input.value), num('ipap', Infinity) - 1));
                 paramState[key] = parseFloat(input.value);
                 setPill();
                 commit();
